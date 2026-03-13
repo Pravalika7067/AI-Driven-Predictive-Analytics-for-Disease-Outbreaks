@@ -1,0 +1,129 @@
+============================================================
+  AI-Driven Predictive Analytics for Disease Outbreaks
+  APPLICATION RUN GUIDE
+============================================================
+
+PROJECT: Checkup Buddy - Disease Prediction Web App
+FRAMEWORK: Streamlit (Python)
+AUTHOR: Disease Analytics Team
+
+------------------------------------------------------------
+PREREQUISITES
+------------------------------------------------------------
+  - Python 3.9 or higher installed
+  - pip (Python package manager) installed
+  - Internet connection (for first-time package install)
+
+------------------------------------------------------------
+STEP 1: NAVIGATE TO PROJECT DIRECTORY
+------------------------------------------------------------
+
+Open a terminal (PowerShell or Command Prompt) and run:
+
+  cd "c:\Users\donth\Desktop\major project\AI-Driven-Predictive-Analytics-for-Disease-Outbreaks"
+
+------------------------------------------------------------
+STEP 2: INSTALL DEPENDENCIES (First time only)
+------------------------------------------------------------
+
+Run the following command to install all required packages:
+
+  pip install numpy pandas scikit-learn==1.6.1 streamlit==1.41.1 streamlit-option-menu==0.4.0 fpdf==1.7.2
+
+  NOTE: The original Requirements.txt lists older pinned versions
+  (numpy==1.24.3, scikit-learn==1.2.2) which are NOT compatible
+  with Python 3.13+. The command above installs compatible
+  versions that work correctly with modern Python.
+
+  If you are using Python 3.9 - 3.11, you may also try:
+    pip install -r Requirements.txt
+
+------------------------------------------------------------
+STEP 3: RUN THE APPLICATION
+------------------------------------------------------------
+
+To launch the Streamlit web app, run:
+
+  streamlit run app.py
+
+  The app will start and automatically open in your browser at:
+
+    Local URL  --> http://localhost:8501
+    Network URL --> http://<your-ip>:8501
+
+------------------------------------------------------------
+STEP 4: ACCESS THE APPLICATION
+------------------------------------------------------------
+
+  1. Open your browser and go to: http://localhost:8501
+  2. Use the sidebar to choose a disease prediction module:
+       - Heart Disease Prediction
+       - Diabetes Prediction
+       - Parkinson's Disease Prediction
+  3. Select the language (English / Tamil) from the sidebar.
+  4. Enter the patient health metrics and click "Diagnose".
+  5. Download the health report as PDF if needed.
+
+------------------------------------------------------------
+OPTIONAL: ADVANCED RUN OPTIONS
+------------------------------------------------------------
+
+Run on a custom port (e.g., 8080):
+  streamlit run app.py --server.port 8080
+
+Run without auto-opening the browser:
+  streamlit run app.py --server.headless true
+
+Run and allow access from other devices on the network:
+  streamlit run app.py --server.address 0.0.0.0
+
+------------------------------------------------------------
+OPTIONAL: RETRAIN ML MODELS
+------------------------------------------------------------
+
+If you need to retrain the machine learning models, run:
+  python retrain_models.py
+
+This will regenerate the .sav model files in the
+Saved_Models/ folder.
+
+------------------------------------------------------------
+STOPPING THE APPLICATION
+------------------------------------------------------------
+
+To stop the running app, press:
+  Ctrl + C
+
+in the terminal where the app is running.
+
+------------------------------------------------------------
+INSTALLED PACKAGE VERSIONS (Verified)
+------------------------------------------------------------
+
+  numpy              : 2.4.1
+  pandas             : 2.3.3
+  scikit-learn       : 1.6.1
+  streamlit          : 1.41.1
+  streamlit-option-menu : 0.4.0
+  fpdf               : 1.7.2
+
+------------------------------------------------------------
+TROUBLESHOOTING
+------------------------------------------------------------
+
+1. "Module not found" error:
+   --> Re-run: pip install numpy pandas scikit-learn==1.6.1 streamlit==1.41.1 streamlit-option-menu==0.4.0 fpdf==1.7.2
+
+2. "Port already in use" error:
+   --> Run on a different port: streamlit run app.py --server.port 8502
+
+3. Model file not found (.sav error):
+   --> Ensure Saved_Models/ folder exists with all 6 .sav files.
+   --> If missing, run: python retrain_models.py
+
+4. App does not open in browser:
+   --> Manually open: http://localhost:8501
+
+============================================================
+Generated on: 2026-03-12
+============================================================

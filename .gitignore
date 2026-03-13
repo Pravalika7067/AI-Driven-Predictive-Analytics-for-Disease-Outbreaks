@@ -1,0 +1,24 @@
+# Virtual Environment
+env/
+venv/
+ENV/
+
+# Databases
+*.db
+*.sqlite3
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Streamlit
+.streamlit/
+
+# Models (Keep them if needed, but normally .sav are pushed if pre-trained)
+# Saved_Models/
+
+# OS files
+.DS_Store
+Thumbs.db

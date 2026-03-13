@@ -1,0 +1,55 @@
+# ============================================================
+# AI-Driven Predictive Analytics for Disease Outbreaks
+# MANUAL TERMINAL RUN GUIDE (Windows)
+# ============================================================
+
+Follow these steps exactly to run the project in your terminal:
+
+------------------------------------------------------------
+STEP 1: OPEN TERMINAL AND NAVIGATE TO PROJECT
+------------------------------------------------------------
+Open PowerShell or Command Prompt.
+Navigate to the project folder:
+
+cd "C:\Users\donth\Desktop\major project\AI-Driven-Predictive-Analytics-for-Disease-Outbreaks"
+
+------------------------------------------------------------
+STEP 2: ACTIVATE VIRTUAL ENVIRONMENT
+------------------------------------------------------------
+To isolate the project dependencies, activate the 'env' environment:
+
+.\env\Scripts\activate
+
+(You should see '(env)' appear at the start of your command prompt line)
+
+------------------------------------------------------------
+STEP 3: INSTALL REQUIREMENTS (Only needed once)
+------------------------------------------------------------
+If you haven't installed dependencies yet, run:
+
+pip install -r Requirements.txt
+
+------------------------------------------------------------
+STEP 4: RUN THE APPLICATION
+------------------------------------------------------------
+To start the web interface, run:
+
+streamlit run app.py
+
+------------------------------------------------------------
+STEP 5: ACCESS IN BROWSER
+------------------------------------------------------------
+The application will provide a URL. Usually it is:
+http://localhost:8501
+
+------------------------------------------------------------
+HOW TO STOP THE APP
+------------------------------------------------------------
+Press Ctrl + C in the terminal window where the app is running.
+
+------------------------------------------------------------
+TROUBLESHOOTING
+------------------------------------------------------------
+- If 'streamlit' command is not recognized, ensure you ACTIVATED the environment in Step 2.
+- If you get a 'ModuleNotFoundError', repeat Step 3 while the environment is active.
+- To deactivate the environment when finished, simply type: deactivate
