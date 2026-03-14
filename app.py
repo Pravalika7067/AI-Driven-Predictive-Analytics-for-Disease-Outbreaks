@@ -3,10 +3,16 @@ import pickle
 import numpy as np
 from io import BytesIO
 from fpdf import FPDF
+from fpdf import FPDF # Still kept for backward if needed, but we will use fpdf2
+try:
+    from fpdf import FPDF as FPDF2 # Try to import fpdf2 if installed as fpdf
+except:
+    from fpdf import FPDF
 import os
 import base64
 from datetime import datetime
 from auth import AuthManager
+from health_assistant import get_medical_advice
 
 # ──────────────────────────────────────────────
 # Page Configuration
@@ -137,69 +143,125 @@ def main_app():
             
         st.markdown("---")
         st.markdown("## Navigation")
-        selection = st.radio("Go to", ["Home", "Heart Disease", "Diabetes", "Parkinson's Disease"])
-        st.markdown("---")
-        st.markdown("### 📧 Support")
-        st.write("jananiviswa05@gmail.com")
+        selection = st.radio("Go to", ["Home", "Heart Disease", "Diabetes", "Parkinson's Disease", "About"])
         st.markdown("---")
         st.caption("✅ For educational use only.")
 
-    # PDF Class
+    # PDF Class using FPDF2 for better support
     class PDF(FPDF):
         def __init__(self):
             super().__init__()
             self.set_auto_page_break(auto=True, margin=15)
-            self.set_font("Arial", "", 12)
+            # Use a standard font that supports some symbols or just sanitize
         def sanitize_text(self, text):
-            return "".join(c for c in str(text) if ord(c) < 128)
+            # FPDF1/2 standard fonts only support latin-1
+            if not text: return ""
+            return str(text).encode('latin-1', 'replace').decode('latin-1')
+            
         def header(self):
             logo_path = "Images/Logo 1.png"
-            if os.path.exists(logo_path): self.image(logo_path, x=10, y=8, w=25)
+            if os.path.exists(logo_path): 
+                self.image(logo_path, x=10, y=8, w=25)
             self.set_font("Arial", "B", 14)
             self.cell(0, 10, "Health Diagnosis Report - Checkup Buddy", ln=True, align='C')
             self.ln(5)
+            
         def footer(self):
             self.set_y(-15)
-            self.set_font("Arial", "", 9)
+            self.set_font("Arial", "I", 8)
             self.cell(0, 10, f"Page {self.page_no()} | User: {st.session_state.username}", align='C')
 
-    def generate_pdf(name, disease_name, result_text, advice, inputs_dict, analysis):
+    def generate_pdf(name, disease_name, result_text, advice, inputs_dict, analysis, recs=None):
         pdf = PDF()
         pdf.add_page()
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, pdf.sanitize_text(f"{disease_name} - Analysis Report"), ln=True, align='C')
-        pdf.ln(6)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, f"Patient Name: {pdf.sanitize_text(name)}", ln=True)
-        pdf.cell(0, 8, f"Report Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
-        pdf.ln(6)
         
+        # Title
+        pdf.set_font("Arial", "B", 18)
+        pdf.set_text_color(31, 119, 180) # Blue color
+        pdf.cell(0, 15, pdf.sanitize_text(f"{disease_name} - Analysis Report"), ln=True, align='C')
+        pdf.ln(5)
+        
+        # Patient Info
+        pdf.set_text_color(0, 0, 0)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Recorded Metrics:", ln=True)
-        pdf.set_font("Arial", "", 11)
-        pdf.set_fill_color(245, 245, 245)
+        pdf.cell(95, 8, f"Patient Name: {pdf.sanitize_text(name)}", ln=0)
+        pdf.cell(95, 8, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=1, align='R')
+        pdf.ln(10)
+        
+        # Metrics Table
+        pdf.set_fill_color(240, 242, 246)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Recorded Health Metrics:", ln=True)
+        pdf.set_font("Arial", "", 10)
         for label, value in inputs_dict.items():
-            l_t, v_t = pdf.sanitize_text(label), pdf.sanitize_text(value)
-            pdf.cell(80, 8, l_t, border=1, fill=True)
-            pdf.cell(100, 8, v_t, border=1, ln=True)
+            pdf.cell(80, 8, pdf.sanitize_text(label), border=1, fill=True)
+            pdf.cell(110, 8, pdf.sanitize_text(value), border=1, ln=True)
+        pdf.ln(10)
         
-        pdf.ln(6)
+        # Assessment
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Assessment:", ln=True)
+        pdf.cell(0, 10, "Medical Assessment:", ln=True)
         pdf.set_font("Arial", "", 11)
-        pdf.multi_cell(0, 8, pdf.sanitize_text(result_text))
+        pdf.set_fill_color(255, 255, 255)
         
-        pdf.ln(4)
+        status_color = (255, 0, 0) if "RISK" in result_text.upper() or "POSITIVE" in result_text.upper() else (0, 128, 0)
+        pdf.set_text_color(*status_color)
+        pdf.multi_cell(0, 8, f"Status: {pdf.sanitize_text(result_text)}")
+        pdf.set_text_color(0, 0, 0)
+        
+        pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Risk Analysis:", ln=True)
+        pdf.cell(0, 10, "Risk Analysis:", ln=True)
         pdf.set_font("Arial", "", 11)
         pdf.multi_cell(0, 8, pdf.sanitize_text(analysis))
         
-        pdf.ln(4)
+        pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Advice:", ln=True)
+        pdf.cell(0, 10, "Advice:", ln=True)
         pdf.set_font("Arial", "", 11)
         pdf.multi_cell(0, 8, pdf.sanitize_text(advice))
+        
+        # AI Recommendations Section
+        if recs:
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 16)
+            pdf.set_text_color(31, 119, 180)
+            pdf.cell(0, 15, "Personalized Medical Recommendations", ln=True, align='C')
+            pdf.ln(5)
+            
+            pdf.set_text_color(0,0,0)
+            pdf.set_font("Arial", "B", 13)
+            pdf.cell(0, 10, "Medicine Prescriptions & AI Advice:", ln=True)
+            pdf.set_font("Arial", "", 10)
+            pdf.multi_cell(0, 6, pdf.sanitize_text(recs['prescription_advice']))
+            pdf.ln(10)
+            
+            pdf.set_font("Arial", "B", 13)
+            pdf.cell(0, 10, "Nearby Medical Shops:", ln=True)
+            pdf.set_font("Arial", "", 10)
+            for shop in recs['medical_shops']:
+                pdf.set_font("Arial", "B", 11)
+                pdf.cell(0, 7, pdf.sanitize_text(shop['name']), ln=True)
+                pdf.set_font("Arial", "", 9)
+                pdf.multi_cell(0, 5, pdf.sanitize_text(shop['snippet']))
+                pdf.set_text_color(0, 0, 255)
+                pdf.cell(0, 5, "Link: " + pdf.sanitize_text(shop['link']), ln=True)
+                pdf.set_text_color(0, 0, 0)
+                pdf.ln(3)
+                
+            pdf.ln(5)
+            pdf.set_font("Arial", "B", 13)
+            pdf.cell(0, 10, "Nearby Recommended Hospitals:", ln=True)
+            pdf.set_font("Arial", "", 10)
+            for hospital in recs["hospitals"]:
+                pdf.set_font("Arial", "B", 11)
+                pdf.cell(0, 7, pdf.sanitize_text(hospital['name']), ln=True)
+                pdf.set_font("Arial", "", 9)
+                pdf.multi_cell(0, 5, pdf.sanitize_text(hospital['snippet']))
+                pdf.set_text_color(0, 0, 255)
+                pdf.cell(0, 5, "Link: " + pdf.sanitize_text(hospital['link']), ln=True)
+                pdf.set_text_color(0, 0, 0)
+                pdf.ln(3)
 
         pdf_output = pdf.output(dest='S')
         pdf_bytes = pdf_output.encode('latin-1') if isinstance(pdf_output, str) else bytes(pdf_output)
@@ -252,6 +314,7 @@ def main_app():
             slope = st.selectbox("ST Slope", ["Upsloping", "Flat", "Downsloping"])
             ca = st.selectbox("Vessels Colored (0-3)", ["0", "1", "2", "3"])
             thal = st.selectbox("Thalassemia", ["Normal", "Fixed Defect", "Reversible Defect"])
+            area = st.text_input("Your Location/Area (for nearby recommendations)", "New Delhi")
 
         if st.button("Run Diagnose"):
             sex_v = 0 if sex == "Male" else 1
@@ -272,7 +335,27 @@ def main_app():
             if result == 1: st.error(f"Assessment: {res_t}")
             else: st.success(f"Assessment: {res_t}")
             st.info(f"Advice: {advice}")
-            st.markdown(generate_pdf(name, "Heart Disease", res_t, advice, {"Age": str(age), "BP": str(trestbps)}, analysis), unsafe_allow_html=True)
+            
+            with st.spinner("Fetching AI recommendations..."):
+                recs = get_medical_advice("Heart Disease", res_t, area)
+                
+            st.subheader("💊 Medicine Prescriptions & AI Advice")
+            st.write(recs['prescription_advice'])
+            
+            col_shop, col_hosp = st.columns(2)
+            with col_shop:
+                st.subheader("🏪 Nearby Medical Shops")
+                for shop in recs['medical_shops']:
+                    st.markdown(f"**[{shop['name']}]({shop['link']})**")
+                    st.caption(shop['snippet'])
+            
+            with col_hosp:
+                st.subheader("🏥 Nearby Hospitals")
+                for hosp in recs['hospitals']:
+                    st.markdown(f"**[{hosp['name']}]({hosp['link']})**")
+                    st.caption(hosp['snippet'])
+
+            st.markdown(generate_pdf(name, "Heart Disease", res_t, advice, {"Age": str(age), "BP": str(trestbps), "Location": area}, analysis, recs), unsafe_allow_html=True)
 
     elif selection == "Diabetes":
         st.header("🩸 Diabetes Screening")
@@ -288,6 +371,7 @@ def main_app():
             ins = st.number_input("Insulin", 0, 900, 79)
             bmi = st.number_input("BMI", 0.0, 70.0, 25.0)
             dpf = st.number_input("Diabetes Pedigree", 0.0, 3.0, 0.3)
+            area = st.text_input("Your Location/Area (for nearby recommendations)", "New Delhi")
 
         if st.button("Run Screen"):
             features = [preg, gluc, bp, skin, ins, bmi, dpf, age]
@@ -296,7 +380,28 @@ def main_app():
             advice = "Check blood sugar levels regularly." if result == 1 else "Keep up the good habits."
             if result == 1: st.error(res_t)
             else: st.success(res_t)
-            st.markdown(generate_pdf(name, "Diabetes", res_t, advice, {"Glucose": str(gluc), "BMI": f"{bmi:.1f}"}, get_analysis("diabetes", features, result)), unsafe_allow_html=True)
+            st.info(f"Advice: {advice}")
+
+            with st.spinner("Fetching AI recommendations..."):
+                recs = get_medical_advice("Diabetes", res_t, area)
+                
+            st.subheader("💊 Medicine Prescriptions & AI Advice")
+            st.write(recs['prescription_advice'])
+            
+            col_shop, col_hosp = st.columns(2)
+            with col_shop:
+                st.subheader("🏪 Nearby Medical Shops")
+                for shop in recs['medical_shops']:
+                    st.markdown(f"**[{shop['name']}]({shop['link']})**")
+                    st.caption(shop['snippet'])
+            
+            with col_hosp:
+                st.subheader("🏥 Nearby Hospitals")
+                for hosp in recs['hospitals']:
+                    st.markdown(f"**[{hosp['name']}]({hosp['link']})**")
+                    st.caption(hosp['snippet'])
+
+            st.markdown(generate_pdf(name, "Diabetes", res_t, advice, {"Glucose": str(gluc), "BMI": f"{bmi:.1f}", "Location": area}, get_analysis("diabetes", features, result), recs), unsafe_allow_html=True)
 
     elif selection == "Parkinson's Disease":
         st.header("🧠 Parkinson's Analysis")
@@ -311,6 +416,7 @@ def main_app():
             nhr = st.number_input("NHR", 0.0, 1.0, 0.02, format="%.5f")
             hnr = st.number_input("HNR", 0.0, 50.0, 20.0)
             ppe = st.number_input("PPE", 0.0, 1.0, 0.2, format="%.5f")
+            area = st.text_input("Your Location/Area (for nearby recommendations)", "New Delhi")
 
         if st.button("Analyze Voice"):
             # Minimal feature set for demonstration, but ensuring all 22 are passed to scaler
@@ -319,6 +425,45 @@ def main_app():
             res_t = "DETECTION: POSITIVE" if result == 1 else "DETECTION: NEGATIVE"
             if result == 1: st.error(res_t)
             else: st.success(res_t)
+
+            with st.spinner("Fetching AI recommendations..."):
+                recs = get_medical_advice("Parkinson's Disease", res_t, area)
+                
+            st.subheader("💊 Medicine Prescriptions & AI Advice")
+            st.write(recs['prescription_advice'])
+            
+            col_shop, col_hosp = st.columns(2)
+            with col_shop:
+                st.subheader("🏪 Nearby Medical Shops")
+                for shop in recs['medical_shops']:
+                    st.markdown(f"**[{shop['name']}]({shop['link']})**")
+                    st.caption(shop['snippet'])
+            
+            with col_hosp:
+                st.subheader("🏥 Nearby Hospitals")
+                for hosp in recs['hospitals']:
+                    st.markdown(f"**[{hosp['name']}]({hosp['link']})**")
+                    st.caption(hosp['snippet'])
+
+            st.markdown(generate_pdf(st.session_state.username, "Parkinson's Disease", res_t, "Consult with a neurologist.", {"MDVP:Fo": str(fo), "Location": area}, get_analysis("parkinsons", full_features, result), recs), unsafe_allow_html=True)
+
+    elif selection == "About":
+        st.title("ℹ️ About Checkup Buddy")
+        st.markdown("""
+        ### AI-Driven Predictive Analytics for Disease Outbreaks
+        **Checkup Buddy** is an advanced health diagnostic tool designed to provide preliminary health assessments using Machine Learning. 
+        
+        #### Key Features:
+        - **ML Diagnostics**: Specialized models for Heart Disease, Diabetes, and Parkinson's.
+        - **AI Recommendations**: Powered by **Gemini 2.5 Flash** for personalized medical advice and prescriptions.
+        - **Real-time Search**: Powered by **Tavily AI** to locate nearby medical shops and hospitals based on your area.
+        - **Comprehensive Reports**: Generate and download detailed health reports in PDF format.
+        
+        #### Our Mission:
+        To leverage the power of Artificial Intelligence to make health screening more accessible and informative for everyone.
+        
+        *Disclaimer: This tool is for educational purposes and should not be used as a substitute for professional medical advice.*
+        """)
 
 # Boot
 if st.session_state.logged_in:
